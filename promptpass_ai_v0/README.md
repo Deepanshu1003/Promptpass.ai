@@ -34,6 +34,7 @@ npm install
 npm run dev
 
 # 4. Open http://localhost:5173 in your browser
+# 5. Upload a PDF with questions → All questions are extracted and saved!
 ```
 
 ---
@@ -317,13 +318,14 @@ DATABASE_URL            # PostgreSQL connection string
 
 ## 🛠️ Development Notes
 
-- PDF extraction limits to **2 questions per upload** (for demo/testing)
-- Streaming responses use JSON-wrapped format for markdown preservation
-- CORS enabled for all origins (development only - restrict in production)
-- Database sessions auto-manage with context managers
-- All IDs use UUID v4 for scalability
-- Frontend uses Vite for fast HMR (Hot Module Replacement) during development
-- React Markdown renders AI explanations with GitHub Flavored Markdown support
+- **Generic PDF Extraction**: Extracts ALL questions from PDFs of any size
+- **Robust Error Handling**: Gracefully handles extraction failures with detailed logging
+- **Optimized DB Queries**: Filters attempts by exam plan for better performance
+- **Streaming Responses**: JSON-wrapped format preserves markdown in AI explanations
+- **CORS**: Enabled for all origins (restrict in production)
+- **UUID v4**: Used for all database IDs ensuring scalability
+- **Vite HMR**: Fast Hot Module Replacement during development
+- **React Markdown**: Renders AI explanations with GitHub Flavored Markdown
 
 ---
 
@@ -353,12 +355,13 @@ See [frontend/package.json](frontend/package.json):
 
 ## ⚠️ Important Notes
 
-- **API Key Required**: Set `GEMINI_API_KEY` environment variable to use AI features
-- **Development Only**: CORS is open to all origins - restrict in production
-- **Database**: PostgreSQL must be running (use docker-compose for easy setup)
-- **Demo Limit**: PDF parser limits to 2 questions for demo purposes
+- **API Key Required**: Set `GEMINI_API_KEY` environment variable for AI extraction
+- **Development Only**: CORS is open to all origins - restrict in production  
+- **Database**: PostgreSQL must be running (use docker-compose for setup)
+- **Generic Processing**: Extracts ALL questions regardless of PDF size
 - **Node Version**: Requires Node.js 16+ for frontend development
 - **Port Conflicts**: Backend runs on 8000, frontend on 5173, PostgreSQL on 5432, Adminer on 8080
+- **Error Handling**: Check backend logs for detailed extraction errors
 
 ---
 
@@ -369,11 +372,14 @@ See [frontend/package.json](frontend/package.json):
 - [ ] Multiple user attempts history with detailed statistics
 - [ ] Custom evaluation criteria per exam
 - [ ] Export results as PDF
-- [ ] Timed practice sessions with countdown
+- [ ] Timed practice sessions with countdown timer
 - [ ] Leaderboard & competitive features
-- [ ] Mobile app version
+- [ ] Mobile app version (React Native)
 - [ ] Real-time collaboration features
 - [ ] AI-powered hint system
+- [ ] Batch PDF uploads with progress tracking
+- [ ] Question difficulty classification
+- [ ] Topic-based question grouping
 
 ---
 

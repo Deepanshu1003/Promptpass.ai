@@ -26,19 +26,15 @@ def upload_exam_materials(plan_title: str = Form(...), question_bank: UploadFile
         shutil.copyfileobj(question_bank.file, buffer)
     try:
         extracted_questions = parse_question_pdf(temp_path)
-        print(f"[DEBUG] Parser returned {len(extracted_questions)} questions.")
         if not extracted_questions:
             raise HTTPException(status_code=400, detail="Could not extract any questions out of this PDF.")
         new_plan = ExamPlan(title=plan_title)
         db.add(new_plan)
         db.commit()
         db.refresh(new_plan)
-        print(f"[DEBUG] Created ExamPlan ID: {new_plan.id}")
         for q in extracted_questions:
-            print(f"[DEBUG] Saving to DB: Question #{q['question_number']} - {q['text'][:30]}...")
             db.add(Question(exam_plan_id=new_plan.id, question_number=q["question_number"], text=q["text"], options=q["options"]))
         db.commit()
-        print(f"[DEBUG] Successfully committed all questions to database.")
         return {"exam_plan_id": new_plan.id, "total_questions": len(extracted_questions)}
     finally:
         if os.path.exists(temp_path): os.remove(temp_path)
