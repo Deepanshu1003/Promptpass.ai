@@ -33,23 +33,44 @@ An intelligent AI-powered exam practice platform (Version 0) that helps students
 
 ## ⚡ Quick Start (5 minutes)
 
+### Option A: Full Docker Setup (Recommended)
 ```bash
-# 1. Start database in background
+# 1. Copy environment file
+cp .env.example .env
+
+# 2. Start all services (PostgreSQL + Ollama)
 docker-compose up -d
 
-# 2. Install and run backend (in one terminal)
-cd backend
-pip install -r requirements.txt
-export GEMINI_API_KEY=your_key_here
-python -m uvicorn app.main:app --reload
+# 3. Download Ollama model (first time only, ~4GB)
+docker exec practice_app_ollama ollama pull mistral
 
-# 3. Install and run frontend (in another terminal)
+# 4. Install frontend and run
 cd frontend
 npm install
 npm run dev
 
-# 4. Open http://localhost:5173 in your browser
-# 5. Upload a PDF with questions → All questions are extracted and saved!
+# 5. Open http://localhost:5173 in your browser
+# Backend auto-connects to Ollama at http://ollama:11434
+```
+
+### Option B: Manual Backend Setup (Development)
+```bash
+# 1. Start PostgreSQL and Ollama
+docker-compose up -d
+
+# 2. Install backend dependencies
+cd backend
+pip install -r requirements.txt
+
+# 3. Run FastAPI server
+python -m uvicorn app.main:app --reload
+
+# 4. In another terminal, run frontend
+cd frontend
+npm install
+npm run dev
+
+# 5. Open http://localhost:5173
 ```
 
 ---
@@ -60,12 +81,15 @@ npm run dev
 - **Framework**: FastAPI (Python web framework)
 - **Database**: PostgreSQL (relational database)
 - **ORM**: SQLAlchemy (SQL toolkit and ORM)
-- **AI Service**: Google Generative AI (Gemini 2.0 Flash)
+- **AI Service**: Ollama (Local open-source LLM)
+- **Default Model**: Mistral 7B (fast, accurate)
 - **PDF Processing**: PDFPlumber & PyMuPDF (fitz)
 - **Server**: Uvicorn (ASGI server)
+- **HTTP Client**: Requests (for Ollama API)
 
-### Database
+### Database & Services
 - **PostgreSQL 16** (containerized)
+- **Ollama** (containerized - runs LLM models locally)
 - **Adminer** for database administration UI
 
 ### Frontend
@@ -112,29 +136,44 @@ Promptpass.ai/
 - Python 3.8+
 - Node.js 16+ (for frontend)
 - Docker & Docker Compose
-- Google Gemini API Key
 - PostgreSQL (or use Docker)
+- At least 4GB RAM for Ollama
 
 ### 1. Environment Setup
 
-Create a `.env` file in the backend directory:
+Create a `.env` file in the root directory (copy from `.env.example`):
 
 ```bash
-# Google Gemini API Configuration
-GEMINI_API_KEY=your_gemini_api_key_here
+# Ollama Configuration
+OLLAMA_HOST=http://ollama:11434
+OLLAMA_MODEL=mistral
 
 # Database Configuration (optional if using docker-compose)
-DATABASE_URL=postgresql://app_user:app_secure_password@localhost:5432/practice_session_db
+POSTGRES_USER=app_user
+POSTGRES_PASSWORD=app_secure_password
+POSTGRES_DB=practice_session_db
 ```
 
-### 2. Database Setup (Using Docker)
+**Notes:**
+- `OLLAMA_HOST`: URL where Ollama API listens (Docker: `http://ollama:11434`, Local: `http://localhost:11434`)
+- `OLLAMA_MODEL`: Model to use (mistral, llama2, etc.)
+- Models are auto-downloaded on first use (4-7GB each)
+
+### 2. Database & Ollama Setup (Using Docker)
 
 ```bash
-# Start PostgreSQL and Adminer services
+# Start PostgreSQL and Ollama services
 docker-compose up -d
 
 # Verify services are running
 docker-compose ps
+
+# Download default Ollama model (first time only)
+# This downloads ~4GB of data - be patient!
+docker exec practice_app_ollama ollama pull mistral
+
+# Verify Ollama is ready
+curl http://localhost:11434/api/tags
 
 # Access Adminer at http://localhost:8080
 # - System: PostgreSQL
@@ -142,7 +181,17 @@ docker-compose ps
 # - Username: app_user
 # - Password: app_secure_password
 # - Database: practice_session_db
+
+# To use a different model:
+docker exec practice_app_ollama ollama pull llama2
+# Then update .env: OLLAMA_MODEL=llama2
 ```
+
+**Available Models** (Popular options):
+- `mistral` (7B) - Fast, accurate - **Recommended**
+- `llama2` (7B) - Good general purpose
+- `neural-chat` (7B) - Optimized for chat
+- `dolphin-mixtral` (8x7B) - High quality, more VRAM needed
 
 ### 3. Backend Setup
 
@@ -257,10 +306,20 @@ React entry point that initializes the application with Vite's client-side hydra
 - question_number: Integer
 - text: String (question text)
 - options: JSON {A: "...", B: "...", C: "...", D: "..."}
+OLLAMA_HOST             # Ollama API URL (Default: http://ollama:11434)
+OLLAMA_MODEL            # Model name (Default: mistral)
+POSTGRES_USER           # Database user (Default: app_user)
+POSTGRES_PASSWORD       # Database password (Default: app_secure_password)
+POSTGRES_DB             # Database name (Default: practice_session_db)
 ```
 
-### UserAttempt
-```python
+**Ollama Models Performance:**
+| Model | Size | Speed | Quality | VRAM Needed |
+|-------|------|-------|---------|-------------|
+| mistral | 7B | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | 4GB |
+| llama2 | 7B | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | 4GB |
+| neural-chat | 7B | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | 4GB |
+| phi | 2.7B | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | 2GB |python
 - id: UUID (Primary Key)
 - question_id: UUID (Foreign Key to Question, unique)
 - selected_answer: String (A/B/C/D)
