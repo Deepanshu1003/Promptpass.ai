@@ -16,6 +16,28 @@ An intelligent AI-powered exam practice platform that helps students prepare for
 
 ---
 
+## ⚡ Quick Start (5 minutes)
+
+```bash
+# 1. Start database in background
+docker-compose up -d
+
+# 2. Install and run backend (in one terminal)
+cd backend
+pip install -r requirements.txt
+export GEMINI_API_KEY=your_key_here
+python -m uvicorn app.main:app --reload
+
+# 3. Install and run frontend (in another terminal)
+cd frontend
+npm install
+npm run dev
+
+# 4. Open http://localhost:5173 in your browser
+```
+
+---
+
 ## 🏗️ Technology Stack
 
 ### Backend
@@ -31,7 +53,10 @@ An intelligent AI-powered exam practice platform that helps students prepare for
 - **Adminer** for database administration UI
 
 ### Frontend
-- React.jsx with Vite (to be developed)
+- **React 18** with JSX
+- **Vite** (modern build tool)
+- **React Markdown** (for rendering AI responses)
+- **ESLint** for code quality
 
 ---
 
@@ -43,7 +68,6 @@ Promptpass.ai/
 ├── README.md                   # This file
 ├── backend/
 │   ├── requirements.txt        # Python dependencies
-│   ├── frontend/               # Frontend files (to be added)
 │   └── app/
 │       ├── __init__.py
 │       ├── main.py            # FastAPI application & routes
@@ -52,6 +76,15 @@ Promptpass.ai/
 │       ├── schemas.py         # Pydantic schemas for API validation
 │       ├── parser.py          # PDF parsing & question extraction
 │       └── ai_service.py      # Google Gemini AI integration
+├── frontend/
+│   ├── package.json           # Node.js dependencies & scripts
+│   ├── package-lock.json      # Dependency lock file
+│   ├── vite.config.js         # Vite build configuration
+│   ├── index.html             # HTML entry point
+│   └── src/
+│       ├── main.jsx           # React app entry point
+│       ├── App.jsx            # Main application component
+│       └── PracticeSession.jsx # Practice session UI component
 └── .git/                      # Version control
 ```
 
@@ -112,7 +145,7 @@ The API will be available at `http://localhost:8000`
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
-### 4. Frontend Setup (When Available)
+### 4. Frontend Setup
 
 ```bash
 cd frontend
@@ -120,9 +153,41 @@ cd frontend
 # Install dependencies
 npm install
 
-# Start development server
+# Start development server (runs on http://localhost:5173)
 npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+
+# Run linter
+npm run lint
 ```
+
+The frontend will automatically proxy API requests to `http://localhost:8000` during development.
+
+---
+
+## 🎨 Frontend Components
+
+### **App.jsx**
+Main application component that serves as the entry point for the React application. Handles:
+- Navigation between different views
+- Overall layout and styling
+- State management for exam plans and user sessions
+
+### **PracticeSession.jsx**
+Core component for the practice experience. Features:
+- Question display with multiple choice options
+- Real-time AI evaluation with streaming responses
+- Follow-up chat interface for asking clarification questions
+- Progress tracking visualization
+- Answer history and feedback display
+
+### **main.jsx**
+React entry point that initializes the application with Vite's client-side hydration.
 
 ---
 
@@ -257,11 +322,14 @@ DATABASE_URL            # PostgreSQL connection string
 - CORS enabled for all origins (development only - restrict in production)
 - Database sessions auto-manage with context managers
 - All IDs use UUID v4 for scalability
+- Frontend uses Vite for fast HMR (Hot Module Replacement) during development
+- React Markdown renders AI explanations with GitHub Flavored Markdown support
 
 ---
 
 ## 📦 Dependencies
 
+### Backend
 See [backend/requirements.txt](backend/requirements.txt):
 - fastapi==0.110.0
 - uvicorn==0.28.0
@@ -272,6 +340,15 @@ See [backend/requirements.txt](backend/requirements.txt):
 - pydantic==2.6.4
 - python-multipart==0.0.9
 
+### Frontend
+See [frontend/package.json](frontend/package.json):
+- **react** (^18.2.0) - UI library
+- **react-dom** (^18.2.0) - React DOM rendering
+- **react-markdown** (^10.1.0) - Markdown rendering for AI responses
+- **remark-gfm** (^4.0.1) - GitHub Flavored Markdown support
+- **vite** (^5.2.0) - Build tool and dev server
+- **eslint** (^8.57.0) - Code linting
+
 ---
 
 ## ⚠️ Important Notes
@@ -280,25 +357,64 @@ See [backend/requirements.txt](backend/requirements.txt):
 - **Development Only**: CORS is open to all origins - restrict in production
 - **Database**: PostgreSQL must be running (use docker-compose for easy setup)
 - **Demo Limit**: PDF parser limits to 2 questions for demo purposes
+- **Node Version**: Requires Node.js 16+ for frontend development
+- **Port Conflicts**: Backend runs on 8000, frontend on 5173, PostgreSQL on 5432, Adminer on 8080
 
 ---
 
 ## 🔮 Future Enhancements
 
-- [ ] Frontend React application
 - [ ] User authentication & authorization
-- [ ] Analytics & performance tracking
-- [ ] Multiple user attempts history
-- [ ] Custom evaluation criteria
+- [ ] Advanced analytics & performance tracking
+- [ ] Multiple user attempts history with detailed statistics
+- [ ] Custom evaluation criteria per exam
 - [ ] Export results as PDF
-- [ ] Timed practice sessions
+- [ ] Timed practice sessions with countdown
 - [ ] Leaderboard & competitive features
+- [ ] Mobile app version
+- [ ] Real-time collaboration features
+- [ ] AI-powered hint system
 
 ---
 
 ## 📄 License
 
 This project is part of Promptpass.ai
+
+---
+
+## 🐛 Troubleshooting
+
+### Backend Issues
+
+**"GEMINI_API_KEY missing" error**
+- Ensure you've set the environment variable: `export GEMINI_API_KEY=your_key_here`
+- Verify your API key is valid at [Google AI Studio](https://aistudio.google.com/)
+
+**"Database connection refused"**
+- Make sure PostgreSQL is running: `docker-compose up -d`
+- Check if port 5432 is not already in use: `lsof -i :5432`
+
+**PDF parsing returns no questions**
+- Ensure PDF has clear text (not scanned images without OCR)
+- Check PDF file size isn't too large
+- Verify Gemini API key and connection
+
+### Frontend Issues
+
+**Vite dev server fails to start**
+- Port 5173 might be in use: `lsof -i :5173`
+- Clear node_modules: `rm -rf node_modules && npm install`
+- Check Node version: `node --version` (should be 16+)
+
+**API requests failing with CORS errors**
+- Verify backend is running on http://localhost:8000
+- Check browser console for specific error messages
+
+**React components not rendering**
+- Check browser console for JavaScript errors
+- Ensure all dependencies installed: `npm install`
+- Try clearing browser cache: `Ctrl+Shift+Del` or `Cmd+Shift+Del`
 
 ---
 
@@ -312,7 +428,7 @@ Contributions are welcome! Please ensure:
 
 ---
 
-**Last Updated**: 2026-06-17
+**Last Updated**: June 17, 2026
 
 ## Usage
 - Access the frontend application in your web browser at `http://localhost:3000`.
