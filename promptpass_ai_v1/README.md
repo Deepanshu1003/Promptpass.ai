@@ -1,18 +1,35 @@
-# 📚 Promptpass.ai - AI-Powered Practice & Exam Preparation
+# 📚 Promptpass.ai v1 - Enhanced & Production-Ready
 
-An intelligent AI-powered exam practice platform that helps students prepare for exams by uploading question papers, getting AI-evaluated answers, and receiving detailed explanations with follow-up chat support.
+An intelligent AI-powered exam practice platform (Version 1 - Latest) that helps students prepare for exams by uploading question papers, getting AI-evaluated answers, and receiving detailed explanations with follow-up chat support.
+
+> **Version**: v1 (Latest & Recommended)  
+> **Status**: Production-Ready  
+> **Previous Version**: [v0](../promptpass_ai_v0/README.md)
 
 ---
 
-## ✨ Key Features
+## ✨ v1 Improvements Over v0
 
-- **📄 PDF Question Extraction**: Upload exam PDFs and automatically extract questions using Google Gemini AI vision capabilities
-- **🤖 AI-Powered Evaluation**: Get instant AI-based evaluation of student answers with detailed explanations
-- **💬 Follow-up Chat**: Ask follow-up questions about answers for deeper understanding
-- **📊 Progress Tracking**: Visual progress indicator showing attempted/correct/incorrect questions
-- **🗄️ Persistent Storage**: PostgreSQL database to store exam plans, questions, and student attempts
-- **⚡ Real-time Streaming**: Server-sent events for streaming AI responses in real-time
+| Feature | v0 | v1 | Details |
+|---------|----|----|---------|
+| PDF Extraction | 2 questions limit | All questions | Generic processing for any PDF size |
+| Error Handling | Basic | ✅ Comprehensive | Try-catch blocks and graceful fallbacks |
+| DB Queries | All records | ✅ Filtered | Queries only relevant data per exam plan |
+| Logging | Limited | ✅ Detailed | [DEBUG], [ERROR], [WARNING] prefixes |
+| Production Ready | ❌ | ✅ | Full error handling and optimization |
+
+---
+
+## ✨ v1 Features
+
+- **📄 PDF Question Extraction**: Upload exam PDFs and extract **ALL questions** automatically
+- **🤖 AI-Powered Evaluation**: Get instant AI-based evaluation with detailed explanations
+- **💬 Follow-up Chat**: Ask follow-up questions for deeper understanding
+- **📊 Progress Tracking**: Visual progress indicators (gray/green/red status)
+- **🗄️ Persistent Storage**: PostgreSQL database with optimized queries
+- **⚡ Real-time Streaming**: Server-sent events for AI responses
 - **🔄 Multi-exam Support**: Create and manage multiple exam plans
+- **🛡️ Error Handling**: Comprehensive error recovery and logging
 
 ---
 
@@ -434,14 +451,43 @@ Contributions are welcome! Please ensure:
 
 ---
 
+## 🔮 Future Enhancements (v2+)
+
+- [ ] User authentication & authorization
+- [ ] Advanced analytics & performance tracking
+- [ ] Multiple user attempts history with detailed statistics
+- [ ] Custom evaluation criteria per exam
+- [ ] Export results as PDF
+- [ ] Timed practice sessions with countdown timer
+- [ ] Leaderboard & competitive features
+- [ ] Mobile app version (React Native)
+- [ ] Real-time collaboration features
+- [ ] AI-powered hint system
+- [ ] Batch PDF uploads with progress tracking
+- [ ] Question difficulty classification
+- [ ] Topic-based question grouping
+
+---
+
+## 📊 What's New in v1
+
+✅ **Generic PDF Processing** - No more 2-question limit  
+✅ **Comprehensive Error Handling** - Try-catch blocks throughout  
+✅ **DB Query Optimization** - Filters by exam plan instead of fetching all  
+✅ **Better Logging** - [DEBUG], [ERROR], [WARNING] prefixes  
+✅ **Production Ready** - Full error recovery and graceful fallbacks  
+
+See [v0 README](../promptpass_ai_v0/README.md) for previous version.
+
+---
+
+## 🔗 Related
+
+- [Main README](../../README.md) - Project overview
+- [v0 Version](../promptpass_ai_v0/README.md) - Original version
+- [GitHub Repository](https://github.com/Deepanshu1003/Promptpass.ai)
+
+---
+
+**Version**: v1 (Latest & Recommended)  
 **Last Updated**: June 17, 2026
-
-## Usage
-- Access the frontend application in your web browser at `http://localhost:3000`.
-- The backend API can be accessed at `http://localhost:5000`.
-
-## Contributing
-Feel free to submit issues or pull requests for improvements or bug fixes.
-
-## License
-This project is licensed under the MIT License.

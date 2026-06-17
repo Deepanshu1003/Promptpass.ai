@@ -1,17 +1,32 @@
-# 📚 Promptpass.ai - AI-Powered Practice & Exam Preparation
+# 📚 Promptpass.ai v0 - Initial Release
 
-An intelligent AI-powered exam practice platform that helps students prepare for exams by uploading question papers, getting AI-evaluated answers, and receiving detailed explanations with follow-up chat support.
+An intelligent AI-powered exam practice platform (Version 0) that helps students prepare for exams by uploading question papers, getting AI-evaluated answers, and receiving detailed explanations with follow-up chat support.
+
+> **Version**: v0 (Original)  
+> **Status**: Stable  
+> **For Latest Features**: See [v1](../promptpass_ai_v1/README.md)
 
 ---
 
-## ✨ Key Features
+## ⚠️ Important Notes for v0
 
-- **📄 PDF Question Extraction**: Upload exam PDFs and automatically extract questions using Google Gemini AI vision capabilities
-- **🤖 AI-Powered Evaluation**: Get instant AI-based evaluation of student answers with detailed explanations
-- **💬 Follow-up Chat**: Ask follow-up questions about answers for deeper understanding
-- **📊 Progress Tracking**: Visual progress indicator showing attempted/correct/incorrect questions
-- **🗄️ Persistent Storage**: PostgreSQL database to store exam plans, questions, and student attempts
-- **⚡ Real-time Streaming**: Server-sent events for streaming AI responses in real-time
+- **2-Question Limit**: PDF extraction limited to first 2 questions per upload
+- **Basic Error Handling**: Limited error recovery
+- **All Queries**: Database queries fetch all records (not optimized)
+- **For Learning**: Great reference for understanding the initial architecture
+
+**→ For Production Use**: See [v1 (Latest)](../promptpass_ai_v1/README.md) with full features and optimizations
+
+---
+
+## ✨ v0 Features
+
+- **📄 PDF Question Extraction**: Upload exam PDFs (extracts first 2 questions)
+- **🤖 AI-Powered Evaluation**: Get instant AI-based evaluation with explanations
+- **💬 Follow-up Chat**: Ask follow-up questions for understanding
+- **📊 Progress Tracking**: Visual progress indicators
+- **🗄️ Persistent Storage**: PostgreSQL database
+- **⚡ Real-time Streaming**: Server-sent events for AI responses
 - **🔄 Multi-exam Support**: Create and manage multiple exam plans
 
 ---
@@ -367,6 +382,9 @@ See [frontend/package.json](frontend/package.json):
 
 ## 🔮 Future Enhancements
 
+- [ ] Generic PDF extraction (unlimited questions)
+- [ ] Comprehensive error handling
+- [ ] Optimized database queries
 - [ ] User authentication & authorization
 - [ ] Advanced analytics & performance tracking
 - [ ] Multiple user attempts history with detailed statistics
@@ -374,14 +392,32 @@ See [frontend/package.json](frontend/package.json):
 - [ ] Export results as PDF
 - [ ] Timed practice sessions with countdown timer
 - [ ] Leaderboard & competitive features
-- [ ] Mobile app version (React Native)
-- [ ] Real-time collaboration features
-- [ ] AI-powered hint system
-- [ ] Batch PDF uploads with progress tracking
-- [ ] Question difficulty classification
-- [ ] Topic-based question grouping
 
 ---
+
+## ⬆️ Upgrade to v1
+
+**v1 includes all v0 features plus:**
+- ✅ Extracts ALL questions (no 2-question limit)
+- ✅ Comprehensive error handling
+- ✅ Optimized database queries
+- ✅ Better logging and debugging
+- ✅ Production-ready code
+
+See [v1 README](../promptpass_ai_v1/README.md) for details.
+
+---
+
+## 🔗 Related
+
+- [Main README](../../README.md) - Project overview
+- [v1 Version](../promptpass_ai_v1/README.md) - Latest version
+- [GitHub Repository](https://github.com/Deepanshu1003/Promptpass.ai)
+
+---
+
+**Version**: v0 (Original)  
+**Last Updated**: June 17, 2026
 
 ## 📄 License
 
