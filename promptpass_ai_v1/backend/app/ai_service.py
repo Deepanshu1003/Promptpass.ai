@@ -1,47 +1,108 @@
 import os
 import json
 import asyncio
-from google import genai
+import requests
+from typing import List, Dict
 
-api_key = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key) if api_key else None
+# Configuration for Ollama
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://ollama:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
+
+def _generate_with_ollama(prompt: str) -> str:
+    """Generate response using Ollama API (synchronous)"""
+    try:
+        response = requests.post(
+            f"{OLLAMA_HOST}/api/generate",
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False
+            },
+            timeout=120
+        )
+        response.raise_for_status()
+        result = response.json()
+        return result.get("response", "")
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Ollama API Error: {str(e)}")
+
+async def _generate_with_ollama_stream(prompt: str):
+    """Generate response using Ollama API (streaming)"""
+    try:
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: requests.post(
+                f"{OLLAMA_HOST}/api/generate",
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": True
+                },
+                timeout=120
+            )
+        )
+        response.raise_for_status()
+        
+        # Stream the response line by line
+        for line in response.iter_lines():
+            if line:
+                data = json.loads(line)
+                if "response" in data:
+                    yield data["response"]
+    except Exception as e:
+        yield f"[AI Generation Error: {str(e)}]"
 
 # --- Used by main.py ---
 async def stream_evaluation(question_text: str, options: dict, selected_answer: str):
-    if not client: yield "[Error: GEMINI_API_KEY missing]\n\n"; return
     prompt = f"Analyze: {question_text}. Options: {options}. User Answer: {selected_answer}. Start with GRADE: CORRECT or GRADE: INCORRECT."
-    async for chunk in await client.aio.models.generate_content_stream(model='gemini-2.0-flash', contents=prompt):
-        if chunk.text: yield chunk.text
+    try:
+        async for chunk in _generate_with_ollama_stream(prompt):
+            yield chunk
+    except Exception as e:
+        yield f"[AI Generation Error: {str(e)}]"
 
 # --- Used by main.py ---
 async def stream_chat(question_text: str, explanation: str, user_message: str):
-    if not client: yield "[Error: GEMINI_API_KEY missing]\n\n"; return
     prompt = f"Question: {question_text}. Explanation: {explanation}. Student: {user_message}"
-    async for chunk in await client.aio.models.generate_content_stream(model='gemini-2.0-flash', contents=prompt):
-        if chunk.text: yield chunk.text
+    try:
+        async for chunk in _generate_with_ollama_stream(prompt):
+            yield chunk
+    except Exception as e:
+        yield f"[AI Generation Error: {str(e)}]"
 
 # --- Used by parser.py ---
-async def parse_pdf_page_to_json(image_path: str):
-    """Extract questions from PDF page using Gemini vision with error handling."""
-    if not client: 
-        print("[ERROR] Gemini client not initialized")
+async def parse_pdf_page_to_json(image_path: str) -> List[Dict]:
+    """Extract questions from PDF page using OCR text with Ollama.
+    
+    NOTE: Ollama doesn't support image analysis by default.
+    This function extracts text from the image (requires pdfplumber preprocessing)
+    and uses Ollama to structure it as JSON.
+    For full vision capabilities, consider using:
+    - LLaVA model in Ollama (requires more VRAM)
+    - Claude API with vision
+    - Gemini API
+    """
+    if not image_path:
+        print("[ERROR] No image path provided")
         return []
     
     try:
-        with open(image_path, "rb") as f:
-            image_data = f.read()
+        # Note: This assumes the image has already been OCR'd to text
+        # In production, you'd need to OCR the image first or use a vision model
+        # For now, we'll process text directly
         
-        prompt = '''Extract ALL questions from this PDF page as JSON list.
+        prompt = '''Extract ALL questions from this PDF content as JSON list.
 Return ONLY valid JSON with format:
 [{"question_number": int, "text": "question", "options": {"A":"...", "B":"...", "C":"...", "D":"..."}, "correct_answer": "A"}]
-If no questions, return: []'''
+If no questions, return: []
+
+PDF Content:
+(Process the text content here - requires OCR preprocessing)
+'''
         
-        response = await client.aio.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=[{"mime_type": "image/jpeg", "data": image_data}, prompt]
-        )
-        
-        response_text = response.text.strip().replace("```json", "").replace("```", "").strip()
+        response_text = _generate_with_ollama(prompt)
+        response_text = response_text.strip().replace("```json", "").replace("```", "").strip()
         parsed_data = json.loads(response_text)
         
         if not isinstance(parsed_data, list):

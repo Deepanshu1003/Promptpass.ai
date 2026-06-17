@@ -1,20 +1,59 @@
 import os
 import json
-from google import genai
+import requests
+import asyncio
 
-api_key = os.getenv("GEMINI_API_KEY")
+# Configuration for Ollama
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://ollama:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
 
-if api_key:
-    client = genai.Client(api_key=api_key)
-else:
-    client = None
+def _generate_with_ollama(prompt: str) -> str:
+    """Generate response using Ollama API (synchronous)"""
+    try:
+        response = requests.post(
+            f"{OLLAMA_HOST}/api/generate",
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False
+            },
+            timeout=120
+        )
+        response.raise_for_status()
+        result = response.json()
+        return result.get("response", "")
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Ollama API Error: {str(e)}")
+
+async def _generate_with_ollama_stream(prompt: str):
+    """Generate response using Ollama API (streaming)"""
+    try:
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: requests.post(
+                f"{OLLAMA_HOST}/api/generate",
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": True
+                },
+                timeout=120
+            )
+        )
+        response.raise_for_status()
+        
+        # Stream the response line by line
+        for line in response.iter_lines():
+            if line:
+                data = json.loads(line)
+                if "response" in data:
+                    yield data["response"]
+    except Exception as e:
+        yield f"[AI Generation Error: {str(e)}]"
 
 # 1. The Main Evaluator
 async def stream_evaluation(question_text: str, options: dict, selected_answer: str):
-    if not client:
-        yield "[Error: GEMINI_API_KEY is missing]\n\n"
-        return
-
     prompt = (
         f"You are a strict grading evaluator. Examine this question:\n"
         f"Question: {question_text}\n"
@@ -26,19 +65,13 @@ async def stream_evaluation(question_text: str, options: dict, selected_answer: 
     )
 
     try:
-        response_stream = await client.aio.models.generate_content_stream(model='gemini-2.0-flash', contents=prompt)
-        async for chunk in response_stream:
-            if chunk.text:
-                yield chunk.text # We yield clean text, main.py will format it for streaming!
+        async for chunk in _generate_with_ollama_stream(prompt):
+            yield chunk
     except Exception as e:
         yield f"[AI Generation Error: {str(e)}]"
 
 # 2. The New Follow-Up Chat
 async def stream_chat(question_text: str, explanation: str, user_message: str):
-    if not client:
-        yield "[Error: GEMINI_API_KEY is missing]\n\n"
-        return
-
     prompt = (
         f"You are an AI tutor helping a student with a specific exam question.\n"
         f"Question Context: {question_text}\n"
@@ -48,9 +81,7 @@ async def stream_chat(question_text: str, explanation: str, user_message: str):
     )
     
     try:
-        response_stream = await client.aio.models.generate_content_stream(model='gemini-2.0-flash', contents=prompt)
-        async for chunk in response_stream:
-            if chunk.text:
-                yield chunk.text
+        async for chunk in _generate_with_ollama_stream(prompt):
+            yield chunk
     except Exception as e:
         yield f"[AI Generation Error: {str(e)}]"
