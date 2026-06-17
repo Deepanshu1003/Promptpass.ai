@@ -21,10 +21,12 @@ app.add_middleware(
 
 @app.post("/api/upload")
 def upload_exam_materials(plan_title: str = Form(...), question_bank: UploadFile = File(...), db: Session = Depends(get_db)):
+    print(f"[DEBUG] /api/upload called: plan_title={plan_title}, filename={question_bank.filename}")
     temp_path = f"temp_{question_bank.filename}"
     with open(temp_path, "wb") as buffer:
         shutil.copyfileobj(question_bank.file, buffer)
     try:
+        print(f"[DEBUG] Saved uploaded PDF to temp path: {temp_path}")
         extracted_questions = parse_question_pdf(temp_path)
         print(f"[DEBUG] Parser returned {len(extracted_questions)} questions.")
         if not extracted_questions:

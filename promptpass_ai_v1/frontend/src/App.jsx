@@ -44,16 +44,40 @@ export default function App() {
 
   const handleUpload = async (e) => {
     e.preventDefault();
+    const fileInput = e.target.question_bank?.files?.[0];
+    console.log("[DEBUG] handleUpload called", {
+      plan_title: e.target.plan_title?.value,
+      file: fileInput ? { name: fileInput.name, size: fileInput.size, type: fileInput.type } : null,
+    });
     setIsUploading(true);
     const formData = new FormData(e.target);
+    for (const [key, value] of formData.entries()) {
+      console.log("[DEBUG] formData entry", key, value instanceof File ? { name: value.name, size: value.size, type: value.type } : value);
+    }
     try {
       const response = await fetch('http://localhost:8000/api/upload', { method: 'POST', body: formData });
-      const data = await response.json();
+      console.log("[DEBUG] upload fetch response", response.status, response.statusText);
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (jsonErr) {
+        console.error("[DEBUG] Failed to parse upload response as JSON", text, jsonErr);
+        throw new Error(`Invalid JSON response: ${response.status} ${response.statusText}`);
+      }
+      console.log("[DEBUG] upload response data", data);
       if (response.ok && data.exam_plan_id) {
         await fetchPlans();
         setActivePlanId(data.exam_plan_id);
-      } else { alert("Upload failed: " + data.detail); }
-    } catch (err) { alert("Network error."); } finally { setIsUploading(false); }
+      } else {
+        alert("Upload failed: " + (data.detail || JSON.stringify(data)));
+      }
+    } catch (err) {
+      console.error("[DEBUG] upload request failed", err);
+      alert("Network error. Check the browser console for details.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleDelete = async (e, id) => {
