@@ -91,6 +91,9 @@ npm run dev
 
 Then open `http://localhost:5173` in your browser and upload a PDF.
 
+> Optional: For scanned PDFs, install Tesseract OCR on your machine to enable OCR fallback.
+> On Ubuntu: `sudo apt-get install tesseract-ocr`
+
 ### Run v0 (Alternative)
 ```bash
 cd promptpass_ai_v0
