@@ -112,15 +112,29 @@ export default function App() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <AppLogo />
-          <h1 style={{ 
-            margin: '0 0 0 15px', 
-            fontSize: '1.8rem', 
-            color: '#fff', 
-            fontWeight: '800', 
-            letterSpacing: '-0.8px' 
-          }}>
-            PromptPass
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1 style={{ 
+              margin: '0 0 0 15px', 
+              fontSize: '1.8rem', 
+              color: '#fff', 
+              fontWeight: '800', 
+              letterSpacing: '-0.8px' 
+            }}>
+              PromptPass
+            </h1>
+            <span style={{
+              background: 'rgba(255,255,255,0.12)',
+              color: '#e2e8f0',
+              border: '1px solid rgba(226,232,240,0.25)',
+              borderRadius: '12px',
+              padding: '6px 12px',
+              fontSize: '0.85rem',
+              fontWeight: '700',
+              textTransform: 'uppercase'
+            }}>
+              v1
+            </span>
+          </div>
         </div>
         <div style={{ color: '#94a3b8', fontSize: '0.9rem', fontWeight: '500' }}>
           AI-Powered Certification Mastery

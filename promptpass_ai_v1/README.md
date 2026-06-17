@@ -56,6 +56,8 @@ npm run dev
 # 5. Upload a PDF with questions → v1 supports text PDFs, scanned PDFs, and generic question formats
 ```
 
+> If port 5173 is already in use, Vite may start on 5174 or a later port. Open the URL shown in the terminal, not a hard-coded 5175.
+
 > Optional: For scanned PDFs, install Tesseract OCR on your machine to enable OCR fallback.
 > On Ubuntu: `sudo apt-get install tesseract-ocr`
 
