@@ -52,9 +52,18 @@ cd promptpass_ai_v1/frontend
 npm install
 npm run dev
 
-# 4. Open http://localhost:5173 in your browser
+# 4. Open the URL shown in the Vite terminal (usually http://localhost:5173)
 # 5. Upload a PDF with questions → v1 supports text PDFs, scanned PDFs, and generic question formats
 ```
+
+### Troubleshooting
+- If you see `GET http://localhost:8000/api/plans net::ERR_CONNECTION_REFUSED`, make sure the backend is running on port `8000`.
+- Verify the backend with:
+  ```bash
+  curl http://localhost:8000/api/plans
+  ```
+- If the frontend terminal shows a different port than `5173`, use that URL instead.
+- For scanned PDFs, install Tesseract OCR on your machine and run the backend again.
 
 > If port 5173 is already in use, Vite may start on 5174 or a later port. Open the URL shown in the terminal, not a hard-coded 5175.
 

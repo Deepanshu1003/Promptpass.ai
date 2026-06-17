@@ -49,7 +49,7 @@ cd frontend
 npm install
 npm run dev
 
-# 5. Open http://localhost:5173 in your browser
+# 5. Open the URL shown in the Vite terminal (usually http://localhost:5173)
 # Backend auto-connects to Ollama at http://ollama:11434
 ```
 
@@ -63,15 +63,24 @@ cd backend
 pip install -r requirements.txt
 
 # 3. Run FastAPI server
-python -m uvicorn app.main:app --reload
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # 4. In another terminal, run frontend
 cd frontend
 npm install
 npm run dev
 
-# 5. Open http://localhost:5173
+# 5. Open the URL shown in the Vite terminal (usually http://localhost:5173)
 ```
+
+### Troubleshooting
+- If your browser shows `GET http://localhost:8000/api/plans net::ERR_CONNECTION_REFUSED`, the backend is not running on port `8000`.
+- Start the backend and verify with:
+  ```bash
+  curl http://localhost:8000/api/plans
+  ```
+- If Vite starts on `5174` instead of `5173`, use the actual URL printed in the terminal.
+- If the frontend loads but API fetches fail, the React app is running but the backend needs to be started separately.
 
 ---
 
