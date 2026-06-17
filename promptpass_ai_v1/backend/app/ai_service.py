@@ -72,6 +72,44 @@ async def stream_chat(question_text: str, explanation: str, user_message: str):
         yield f"[AI Generation Error: {str(e)}]"
 
 # --- Used by parser.py ---
+def parse_pdf_text_to_json(document_text: str) -> List[Dict]:
+    """Extract questions from PDF text content using Ollama AI."""
+    if not document_text or not document_text.strip():
+        print("[ERROR] No document text provided for AI parsing")
+        return []
+
+    prompt_text = document_text
+    if len(prompt_text) > 14000:
+        prompt_text = prompt_text[:14000] + "\n\n[TRUNCATED PDF CONTENT]"
+
+    prompt = f'''Extract ALL questions from this PDF content as JSON list.
+Return ONLY valid JSON with format:
+[{{"question_number": int, "text": "question", "options": {{"A":"...", "B":"...", "C":"...", "D":"..."}}, "correct_answer": "A"}}]
+If no questions, return: []
+
+PDF Content:
+{prompt_text}
+'''
+
+    try:
+        response_text = _generate_with_ollama(prompt)
+        response_text = response_text.strip().replace("```json", "").replace("```", "").strip()
+        parsed_data = json.loads(response_text)
+
+        if not isinstance(parsed_data, list):
+            print(f"[WARNING] AI returned {type(parsed_data).__name__} instead of list")
+            return []
+
+        return parsed_data
+
+    except json.JSONDecodeError as e:
+        print(f"[ERROR] JSON parse failed: {str(e)}")
+        return []
+    except Exception as e:
+        print(f"[ERROR] Question extraction failed: {str(e)}")
+        return []
+
+# --- Used by parser.py ---
 async def parse_pdf_page_to_json(image_path: str) -> List[Dict]:
     """Extract questions from PDF page using OCR text with Ollama.
     
@@ -88,10 +126,6 @@ async def parse_pdf_page_to_json(image_path: str) -> List[Dict]:
         return []
     
     try:
-        # Note: This assumes the image has already been OCR'd to text
-        # In production, you'd need to OCR the image first or use a vision model
-        # For now, we'll process text directly
-        
         prompt = '''Extract ALL questions from this PDF content as JSON list.
 Return ONLY valid JSON with format:
 [{"question_number": int, "text": "question", "options": {"A":"...", "B":"...", "C":"...", "D":"..."}, "correct_answer": "A"}]

@@ -70,23 +70,38 @@ Promptpass.ai/
 
 ## ⚡ Quick Start (5 minutes)
 
+### Run v1 (Recommended)
 ```bash
-# 1. Start database in background
-docker-compose up -d
+cd promptpass_ai_v1
+docker compose up -d
 
-# 2. Install and run backend (in one terminal)
 cd backend
 pip install -r requirements.txt
-export GEMINI_API_KEY=your_key_here
-python -m uvicorn app.main:app --reload
+export OLLAMA_HOST=http://localhost:11434
+export OLLAMA_MODEL=mistral
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-# 3. Install and run frontend (in another terminal)
-cd frontend
+In another terminal:
+```bash
+cd promptpass_ai_v1/frontend
 npm install
 npm run dev
+```
 
-# 4. Open http://localhost:5173 in your browser
-# 5. Upload a PDF with questions → All questions are extracted and saved!
+Then open `http://localhost:5173` in your browser and upload a PDF.
+
+### Run v0 (Alternative)
+```bash
+cd promptpass_ai_v0
+# no docker compose needed for v0 if you run backend and frontend separately
+cd backend
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+cd ../frontend
+npm install
+npm run dev
 ```
 
 ---

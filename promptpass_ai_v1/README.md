@@ -36,22 +36,24 @@ An intelligent AI-powered exam practice platform (Version 1 - Latest) that helps
 ## ⚡ Quick Start (5 minutes)
 
 ```bash
-# 1. Start database in background
-docker-compose up -d
+# 1. Start the required services for v1
+cd promptpass_ai_v1
+docker compose up -d
 
-# 2. Install and run backend (in one terminal)
+# 2. Install and run the backend (in one terminal)
 cd backend
 pip install -r requirements.txt
-export GEMINI_API_KEY=your_key_here
-python -m uvicorn app.main:app --reload
+export OLLAMA_HOST=http://localhost:11434
+export OLLAMA_MODEL=mistral
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# 3. Install and run frontend (in another terminal)
-cd frontend
+# 3. Install and run the frontend (in another terminal)
+cd promptpass_ai_v1/frontend
 npm install
 npm run dev
 
 # 4. Open http://localhost:5173 in your browser
-# 5. Upload a PDF with questions → All questions are extracted and saved!
+# 5. Upload a PDF with questions → v1 supports text PDFs, scanned PDFs, and generic question formats
 ```
 
 ---
