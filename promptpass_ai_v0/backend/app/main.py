@@ -21,6 +21,7 @@ app.add_middleware(
 
 @app.post("/api/upload")
 def upload_exam_materials(plan_title: str = Form(...), question_bank: UploadFile = File(...), db: Session = Depends(get_db)):
+    print(f"[DEBUG] /api/upload called: plan_title={plan_title}, filename={question_bank.filename}")
     temp_path = f"temp_{question_bank.filename}"
     with open(temp_path, "wb") as buffer:
         shutil.copyfileobj(question_bank.file, buffer)
@@ -41,10 +42,12 @@ def upload_exam_materials(plan_title: str = Form(...), question_bank: UploadFile
 
 @app.get("/api/plans", response_model=list[ExamPlanResponse])
 def get_all_plans(db: Session = Depends(get_db)):
+    print("[DEBUG] /api/plans called")
     return db.query(ExamPlan).order_by(ExamPlan.created_at.desc()).all()
 
 @app.get("/api/plans/{plan_id}", response_model=ExamPlanResponse)
 def get_single_plan(plan_id: str, db: Session = Depends(get_db)):
+    print(f"[DEBUG] /api/plans/{plan_id} called")
     plan = db.query(ExamPlan).filter(ExamPlan.id == plan_id).first()
     if not plan: raise HTTPException(status_code=404, detail="Plan not found")
     return plan
@@ -52,6 +55,7 @@ def get_single_plan(plan_id: str, db: Session = Depends(get_db)):
 # NEW DELETE ENDPOINT
 @app.delete("/api/plans/{plan_id}")
 def delete_plan(plan_id: str, db: Session = Depends(get_db)):
+    print(f"[DEBUG] DELETE /api/plans/{plan_id} called")
     plan = db.query(ExamPlan).filter(ExamPlan.id == plan_id).first()
     if not plan: raise HTTPException(status_code=404, detail="Plan not found")
     db.delete(plan)
@@ -60,10 +64,12 @@ def delete_plan(plan_id: str, db: Session = Depends(get_db)):
 
 @app.get("/api/plans/{plan_id}/questions", response_model=list[QuestionResponse])
 def get_questions(plan_id: str, db: Session = Depends(get_db)):
+    print(f"[DEBUG] /api/plans/{plan_id}/questions called")
     return db.query(Question).filter(Question.exam_plan_id == plan_id).order_by(Question.question_number).all()
 
 @app.get("/api/plans/{plan_id}/progress", response_model=list[ProgressItem])
 def get_progress(plan_id: str, db: Session = Depends(get_db)):
+    print(f"[DEBUG] /api/plans/{plan_id}/progress called")
     questions = db.query(Question).filter(Question.exam_plan_id == plan_id).order_by(Question.question_number).all()
     attempts = {a.question_id: a for a in db.query(UserAttempt).all()}
     progress = []
@@ -76,6 +82,7 @@ def get_progress(plan_id: str, db: Session = Depends(get_db)):
 
 @app.post("/api/evaluate")
 async def evaluate_answer(payload: AttemptSubmit, db: Session = Depends(get_db)):
+    print(f"[DEBUG] /api/evaluate called: question_id={payload.question_id}, selected_answer={payload.selected_answer}")
     question = db.query(Question).filter(Question.id == payload.question_id).first()
     if not question: raise HTTPException(status_code=404, detail="Question context not found.")
     q_id, q_text, q_options = question.id, question.text, question.options
@@ -93,6 +100,7 @@ async def evaluate_answer(payload: AttemptSubmit, db: Session = Depends(get_db))
         is_correct = "GRADE: CORRECT" in full_text
         sync_db = next(get_db())
         try:
+            print(f"[DEBUG] Saving UserAttempt: question_id={q_id}, is_correct={is_correct}")
             sync_db.add(UserAttempt(question_id=q_id, selected_answer=payload.selected_answer, is_correct=is_correct, explanation=full_text))
             sync_db.commit()
         except: sync_db.rollback()
@@ -103,6 +111,7 @@ async def evaluate_answer(payload: AttemptSubmit, db: Session = Depends(get_db))
 # NEW CHAT ENDPOINT
 @app.post("/api/chat")
 async def ask_followup(payload: ChatSubmit):
+    print(f"[DEBUG] /api/chat called: question_text(len)={len(payload.question_text)}, user_message(len)={len(payload.user_message)}")
     async def event_generator():
         async for text_chunk in stream_chat(payload.question_text, payload.ai_explanation, payload.user_message):
             yield f"data: {json.dumps({'text': text_chunk})}\n\n"

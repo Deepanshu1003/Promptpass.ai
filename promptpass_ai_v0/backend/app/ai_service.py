@@ -10,6 +10,8 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
 def _generate_with_ollama(prompt: str) -> str:
     """Generate response using Ollama API (synchronous)"""
     try:
+        print(f"[DEBUG] Ollama sync request -> URL: {OLLAMA_HOST}/api/generate, model: {OLLAMA_MODEL}")
+        print(f"[DEBUG] Prompt (truncated): {prompt[:200].replace('\n',' ')}")
         response = requests.post(
             f"{OLLAMA_HOST}/api/generate",
             json={
@@ -19,15 +21,20 @@ def _generate_with_ollama(prompt: str) -> str:
             },
             timeout=120
         )
+        print(f"[DEBUG] Ollama response status: {response.status_code}")
         response.raise_for_status()
         result = response.json()
+        print(f"[DEBUG] Ollama sync response keys: {list(result.keys())}")
         return result.get("response", "")
     except requests.exceptions.RequestException as e:
+        print(f"[ERROR] Ollama sync request failed: {str(e)}")
         raise Exception(f"Ollama API Error: {str(e)}")
 
 async def _generate_with_ollama_stream(prompt: str):
     """Generate response using Ollama API (streaming)"""
     try:
+        print(f"[DEBUG] Ollama stream request -> URL: {OLLAMA_HOST}/api/generate, model: {OLLAMA_MODEL}")
+        print(f"[DEBUG] Prompt (truncated): {prompt[:200].replace('\n',' ')}")
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
             None,
@@ -41,6 +48,7 @@ async def _generate_with_ollama_stream(prompt: str):
                 timeout=120
             )
         )
+        print(f"[DEBUG] Ollama stream response status: {response.status_code}")
         response.raise_for_status()
         
         # Stream the response line by line
@@ -48,8 +56,10 @@ async def _generate_with_ollama_stream(prompt: str):
             if line:
                 data = json.loads(line)
                 if "response" in data:
+                    print(f"[DEBUG] Ollama stream chunk received (len={len(data.get('response',''))})")
                     yield data["response"]
     except Exception as e:
+        print(f"[ERROR] Ollama stream failed: {str(e)}")
         yield f"[AI Generation Error: {str(e)}]"
 
 # 1. The Main Evaluator
