@@ -25,22 +25,8 @@ services:
     networks:
       - practice_network
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: practice_app_ollama
-    restart: always
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    environment:
-      - OLLAMA_NUM_THREAD=2
-    networks:
-      - practice_network
-
 volumes:
   postgres_data:
-  ollama_data:
 
 networks:
   practice_network:
