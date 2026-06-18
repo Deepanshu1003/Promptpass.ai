@@ -104,7 +104,10 @@ async def evaluate_answer(payload: AttemptSubmit, db: Session = Depends(get_db))
             
         full_text = "".join(collected_chunks)
         first_line = full_text.strip().split("\n")[0]
-        is_correct = "CORRECT" in first_line.upper()
+        is_incorrect = "INCORRECT" in first_line.upper()
+        is_correct = not is_incorrect
+        print(f"[DEBUG] First line of evaluation: {first_line}")
+        print(f"[DEBUG] Evaluation complete: is_correct={is_correct}, full_text_len={len(full_text)}, first_line={first_line}")
         sync_db = next(get_db())
         try:
             print(f"[DEBUG] Saving UserAttempt: question_id={q_id}, is_correct={is_correct}")

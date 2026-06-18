@@ -19,24 +19,40 @@ export default function PracticeSession({ planId, plans, onSwitch, onBack }) {
   const [questions, setQuestions] = useState([]);
   const [progress, setProgress] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-
   const [selectedAnswer, setSelectedAnswer] = useState('');
   const [explanation, setExplanation] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [chatInput, setChatInput] = useState('');
   const [chatLog, setChatLog] = useState([]);
+  const [isChatting, setIsChatting] = useState(false);
 
   const [questionAnswers, setQuestionAnswers] = useState({});
   const [questionExplanations, setQuestionExplanations] = useState({});
   const [questionChats, setQuestionChats] = useState({});
-  
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [chatInput, setChatInput] = useState('');
-  const [isChatting, setIsChatting] = useState(false);
 
   useEffect(() => {
     setCurrentIndex(0); setSelectedAnswer(''); setExplanation(''); setChatLog([]); setChatInput('');
     fetch(`http://localhost:8000/api/plans/${planId}/questions`).then(res => res.json()).then(setQuestions);
     fetchProgress();
   }, [planId]);
+
+  useEffect(() => {
+    const currentQuestion = questions[currentIndex];
+  
+    if (!currentQuestion) return;
+  
+    const qid = currentQuestion.id;
+  
+    setSelectedAnswer(questionAnswers[qid] || '');
+    setExplanation(questionExplanations[qid] || '');
+    setChatLog(questionChats[qid] || []);
+  }, [
+    currentIndex,
+    questions,
+    questionAnswers,
+    questionExplanations,
+    questionChats
+  ]);
 
   const fetchProgress = async () => {
     const res = await fetch(`http://localhost:8000/api/plans/${planId}/progress`);
@@ -91,9 +107,15 @@ export default function PracticeSession({ planId, plans, onSwitch, onBack }) {
     setIsChatting(false);
   };
 
-  if (!questions.length) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Workspace...</div>;
-
+  if (!questions.length)
+    return (
+      <div style={{ padding: '40px', textAlign: 'center' }}>
+        Loading Workspace...
+      </div>
+    );
+  
   const currentQuestion = questions[currentIndex];
+  
   const total = questions.length;
   const attempted = progress.filter(p => p.status !== 'gray').length;
   const correct = progress.filter(p => p.status === 'green').length;
