@@ -1,153 +1,167 @@
 import os
 import json
-import asyncio
-import requests
-from typing import List, Dict
+from dotenv import load_dotenv
+from openai import OpenAI
 
-# Configuration for Ollama
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://ollama:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
+# --------------------------------------------------
+# Load Environment Variables
+# --------------------------------------------------
 
-def _generate_with_ollama(prompt: str) -> str:
-    """Generate response using Ollama API (synchronous)"""
+load_dotenv()
+
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+
+if not GITHUB_TOKEN:
+    raise RuntimeError(
+        "GITHUB_TOKEN is not configured. "
+        "Please set it in your .env file."
+    )
+
+CHAT_MODEL = os.getenv(
+    "CHAT_MODEL",
+    "gpt-4o-mini"
+)
+
+EVALUATION_MODEL = os.getenv(
+    "EVALUATION_MODEL",
+    "gpt-4o-mini"
+)
+
+print(f"[AI] Using chat model: {CHAT_MODEL}")
+print(f"[AI] Using evaluation model: {EVALUATION_MODEL}")
+
+# --------------------------------------------------
+# GitHub Models Client
+# --------------------------------------------------
+
+client = OpenAI(
+    api_key=GITHUB_TOKEN,
+    base_url="https://models.inference.ai.azure.com"
+)
+
+# --------------------------------------------------
+# Generic Streaming Function
+# --------------------------------------------------
+
+async def generate_stream(
+    prompt: str,
+    model_name: str
+):
     try:
-        response = requests.post(
-            f"{OLLAMA_HOST}/api/generate",
-            json={
-                "model": OLLAMA_MODEL,
-                "prompt": prompt,
-                "stream": False
-            },
-            timeout=120
+
+        print(f"[AI] Using model: {model_name}")
+
+        stream = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.2,
+            stream=True
         )
-        response.raise_for_status()
-        result = response.json()
-        return result.get("response", "")
-    except requests.exceptions.RequestException as e:
-        raise Exception(f"Ollama API Error: {str(e)}")
 
-async def _generate_with_ollama_stream(prompt: str):
-    """Generate response using Ollama API (streaming)"""
-    try:
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(
-            None,
-            lambda: requests.post(
-                f"{OLLAMA_HOST}/api/generate",
-                json={
-                    "model": OLLAMA_MODEL,
-                    "prompt": prompt,
-                    "stream": True
-                },
-                timeout=120
-            )
+        for chunk in stream:
+
+            if (
+                chunk.choices
+                and chunk.choices[0].delta
+                and chunk.choices[0].delta.content
+            ):
+                yield chunk.choices[0].delta.content
+
+    except Exception as e:
+
+        print(
+            f"[ERROR] GitHub Models stream failed "
+            f"(model={model_name}) : {str(e)}"
         )
-        response.raise_for_status()
-        
-        # Stream the response line by line
-        for line in response.iter_lines():
-            if line:
-                data = json.loads(line)
-                if "response" in data:
-                    yield data["response"]
-    except Exception as e:
-        yield f"[AI Generation Error: {str(e)}]"
 
-# --- Used by main.py ---
-async def stream_evaluation(question_text: str, options: dict, selected_answer: str):
-    prompt = f"Analyze: {question_text}. Options: {options}. User Answer: {selected_answer}. Start with GRADE: CORRECT or GRADE: INCORRECT."
-    try:
-        async for chunk in _generate_with_ollama_stream(prompt):
-            yield chunk
-    except Exception as e:
-        yield f"[AI Generation Error: {str(e)}]"
+        yield (
+            f"\n\n"
+            f"[AI Error: {str(e)}]"
+        )
 
-# --- Used by main.py ---
-async def stream_chat(question_text: str, explanation: str, user_message: str):
-    prompt = f"Question: {question_text}. Explanation: {explanation}. Student: {user_message}"
-    try:
-        async for chunk in _generate_with_ollama_stream(prompt):
-            yield chunk
-    except Exception as e:
-        yield f"[AI Generation Error: {str(e)}]"
+# --------------------------------------------------
+# Answer Evaluation
+# --------------------------------------------------
 
-# --- Used by parser.py ---
-def parse_pdf_text_to_json(document_text: str) -> List[Dict]:
-    """Extract questions from PDF text content using Ollama AI."""
-    if not document_text or not document_text.strip():
-        print("[ERROR] No document text provided for AI parsing")
-        return []
+async def stream_evaluation(
+    question_text: str,
+    options: dict,
+    selected_answer: str
+):
+    prompt = f"""
+You are an expert competitive-exam evaluator.
 
-    prompt_text = document_text
-    if len(prompt_text) > 14000:
-        prompt_text = prompt_text[:14000] + "\n\n[TRUNCATED PDF CONTENT]"
+Question:
+{question_text}
 
-    prompt = f'''Extract ALL questions from this PDF content as JSON list.
-Return ONLY valid JSON with format:
-[{{"question_number": int, "text": "question", "options": {{"A":"...", "B":"...", "C":"...", "D":"..."}}, "correct_answer": "A"}}]
-If no questions, return: []
+Options:
+{json.dumps(options, indent=2)}
 
-PDF Content:
-{prompt_text}
-'''
+Student Selected Answer:
+{selected_answer}
 
-    try:
-        response_text = _generate_with_ollama(prompt)
-        response_text = response_text.strip().replace("```json", "").replace("```", "").strip()
-        parsed_data = json.loads(response_text)
+Instructions:
 
-        if not isinstance(parsed_data, list):
-            print(f"[WARNING] AI returned {type(parsed_data).__name__} instead of list")
-            return []
+1. Determine whether the answer is correct.
+2. Start your response EXACTLY with:
 
-        return parsed_data
+GRADE: CORRECT
 
-    except json.JSONDecodeError as e:
-        print(f"[ERROR] JSON parse failed: {str(e)}")
-        return []
-    except Exception as e:
-        print(f"[ERROR] Question extraction failed: {str(e)}")
-        return []
+OR
 
-# --- Used by parser.py ---
-async def parse_pdf_page_to_json(image_path: str) -> List[Dict]:
-    """Extract questions from PDF page using OCR text with Ollama.
-    
-    NOTE: Ollama doesn't support image analysis by default.
-    This function extracts text from the image (requires pdfplumber preprocessing)
-    and uses Ollama to structure it as JSON.
-    For full vision capabilities, consider using:
-    - LLaVA model in Ollama (requires more VRAM)
-    - Claude API with vision
-    - Gemini API
-    """
-    if not image_path:
-        print("[ERROR] No image path provided")
-        return []
-    
-    try:
-        prompt = '''Extract ALL questions from this PDF content as JSON list.
-Return ONLY valid JSON with format:
-[{"question_number": int, "text": "question", "options": {"A":"...", "B":"...", "C":"...", "D":"..."}, "correct_answer": "A"}]
-If no questions, return: []
+GRADE: INCORRECT
 
-PDF Content:
-(Process the text content here - requires OCR preprocessing)
-'''
-        
-        response_text = _generate_with_ollama(prompt)
-        response_text = response_text.strip().replace("```json", "").replace("```", "").strip()
-        parsed_data = json.loads(response_text)
-        
-        if not isinstance(parsed_data, list):
-            print(f"[WARNING] AI returned {type(parsed_data).__name__} instead of list")
-            return []
-        
-        return parsed_data
-        
-    except json.JSONDecodeError as e:
-        print(f"[ERROR] JSON parse failed: {str(e)}")
-        return []
-    except Exception as e:
-        print(f"[ERROR] Question extraction failed: {str(e)}")
-        return []
+3. Explain the reasoning.
+4. Explain why other options are incorrect.
+5. Mention the key concept tested.
+6. Give one exam-preparation tip.
+
+Use Markdown formatting.
+"""
+
+    async for chunk in generate_stream(
+        prompt,
+        EVALUATION_MODEL
+    ):
+        yield chunk
+
+# --------------------------------------------------
+# Follow-up Tutor Chat
+# --------------------------------------------------
+
+async def stream_chat(
+    question_text: str,
+    explanation: str,
+    user_message: str
+):
+    prompt = f"""
+You are an expert AI tutor helping a student.
+
+Question:
+{question_text}
+
+Previous Explanation:
+{explanation}
+
+Student Follow-up Question:
+{user_message}
+
+Instructions:
+
+- Answer clearly.
+- Be concise.
+- Use Markdown.
+- Give examples when helpful.
+- Focus on helping the student understand the concept.
+"""
+
+    async for chunk in generate_stream(
+        prompt,
+        CHAT_MODEL
+    ):
+        yield chunk

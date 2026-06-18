@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres-db:
     image: postgres:16-alpine
-    container_name: practice_app_db
+    container_name: practice_app_db_v1
     restart: always
     environment:
       POSTGRES_USER: app_user
@@ -18,15 +18,29 @@ services:
 
   db-adminer:
     image: adminer
-    container_name: practice_app_adminer
+    container_name: practice_app_adminer_v1
     restart: always
     ports:
       - "8080:8080"
     networks:
       - practice_network
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: practice_app_ollama_v1
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_NUM_THREAD=2
+    networks:
+      - practice_network
+
 volumes:
   postgres_data:
+  ollama_data:
 
 networks:
   practice_network:

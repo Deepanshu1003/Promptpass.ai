@@ -132,7 +132,7 @@ export default function App() {
               fontWeight: '700',
               textTransform: 'uppercase'
             }}>
-              v0
+              v1
             </span>
           </div>
         </div>

@@ -1,147 +1,92 @@
-import os
-import re
-import fitz # PyMuPDF
 import pdfplumber
-import asyncio
+import re
 from typing import List, Dict, Any
-from .ai_service import parse_pdf_text_to_json
 
-try:
-    import pytesseract
-    from PIL import Image
-    OCR_AVAILABLE = True
-except ImportError:
-    OCR_AVAILABLE = False
-
-
-def _clean_text(text: str) -> str:
-    return text.replace('\x00', ' ').strip()
-
-
-def _extract_text_from_page(doc: fitz.Document, file_path: str, page_number: int) -> str:
-    page = doc.load_page(page_number)
-    page_text = page.get_text("text")
-    if page_text and page_text.strip():
-        return _clean_text(page_text)
-
+def parse_question_pdf(file_path: str) -> List[Dict[str, Any]]:
+    print(f"\n[PARSER] Initiating PDF extraction for: {file_path}")
+    parsed_questions = []
+    full_text = ""
+    
     try:
         with pdfplumber.open(file_path) as pdf:
-            text = pdf.pages[page_number].extract_text() or ""
-            if text.strip():
-                return _clean_text(text)
+            total_pages = len(pdf.pages)
+            print(f"[PARSER] Successfully opened PDF. Total pages found: {total_pages}")
+            
+            for i, page in enumerate(pdf.pages):
+                text = page.extract_text()
+                if text:
+                    # CRITICAL FIX: Strip out NUL bytes that crash PostgreSQL
+                    clean_text = text.replace('\x00', '')
+                    full_text += clean_text + "\n"
+                else:
+                    print(f"[PARSER] WARNING: Page {i+1} returned no text.")
+                    
     except Exception as e:
-        print(f"[DEBUG] pdfplumber fallback failed for page {page_number + 1}: {e}")
-
-    if OCR_AVAILABLE:
-        image_path = f"temp_ocr_page_{page_number}.png"
-        try:
-            pix = page.get_pixmap(dpi=200)
-            pix.save(image_path)
-            ocr_text = pytesseract.image_to_string(Image.open(image_path))
-            if ocr_text and ocr_text.strip():
-                return _clean_text(ocr_text)
-        except Exception as e:
-            print(f"[DEBUG] OCR failed for page {page_number + 1}: {e}")
-        finally:
-            if os.path.exists(image_path):
-                os.remove(image_path)
-
-    return ""
-
-
-def _parse_questions_from_text(full_text: str) -> List[Dict[str, Any]]:
-    parsed_questions: List[Dict[str, Any]] = []
-    primary_regex = r'(?i)(?:\n|^)\s*Question\s*#\s*\d+'
-    q_indices = [m.start() for m in re.finditer(primary_regex, full_text)]
-
-    if len(q_indices) == 0:
-        fallback_regex = r'(?:\n|^)(?:\d+[\.\:\-])\s+'
-        q_indices = [m.start() for m in re.finditer(fallback_regex, full_text)]
-
-    if len(q_indices) == 0:
+        print(f"[PARSER] CRITICAL ERROR opening PDF: {str(e)}")
         return []
+
+    # First, try to find questions formatted as "Question #1", "Question #2"
+    primary_regex = r'(?i)(?:\n|^)\s*Question\s*#\s*\d+'
+    print(f"[PARSER] Searching for questions using Primary Regex: {primary_regex}")
+    
+    q_indices = [m.start() for m in re.finditer(primary_regex, full_text)]
+    print(f"[PARSER] Found {len(q_indices)} question boundaries.")
+    
+    # If the PDF doesn't use "Question #", fall back to standard "1. " format
+    if len(q_indices) == 0:
+        fallback_regex = r'(?:\n|^)(?:\d+[\.\:\x2d])\s+'
+        q_indices = [m.start() for m in re.finditer(fallback_regex, full_text)]
+        print(f"[PARSER] Primary failed. Fallback regex found {len(q_indices)} question boundaries.")
+        if len(q_indices) == 0:
+            print("[PARSER] ERROR: Regex found 0 questions. File format is unrecognized.")
+            return []
 
     for i in range(len(q_indices)):
         start = q_indices[i]
-        end = q_indices[i + 1] if i + 1 < len(q_indices) else len(full_text)
+        end = q_indices[i+1] if i + 1 < len(q_indices) else len(full_text)
         q_block = full_text[start:end].strip()
-
-        if re.search(r'(?i)Question\s*#\s*\d+', q_block):
+        
+        # Determine the question number and clean the text block
+        if 'Question #' in q_block or 'QUESTION #' in q_block.upper():
             num_match = re.search(r'(?i)Question\s*#\s*(\d+)', q_block)
-            if not num_match:
-                continue
+            if not num_match: continue
             q_num = int(num_match.group(1))
+            
+            # Remove the "Question #X" and "Topic X" headers so they don't appear in React
             q_block = re.sub(r'(?i)Question\s*#\s*\d+', '', q_block, count=1)
             q_block = re.sub(r'(?i)Topic\s*\d+[\s\-\w]*\n', '', q_block)
-            q_block = re.sub(r'(?i)Topic\s*\d+', '', q_block)
+            q_block = re.sub(r'(?i)Topic\s*\d+', '', q_block) 
         else:
             num_match = re.match(r'^(\d+)', q_block)
-            if not num_match:
-                continue
+            if not num_match: continue
             q_num = int(num_match.group(1))
-            q_block = re.sub(r'^\d+[\.\:\-]\s+', '', q_block, count=1)
-
+            # Remove the "1. " number prefix
+            q_block = re.sub(r'^\d+[\.\:\x2d]\s+', '', q_block, count=1)
+            
         q_block = q_block.strip()
+        
+        # Parse text and extract multiple-choice variations (A., B., C., D., E., F.)
         options_pattern = r'(?:\n|^)\s*([A-F])[\.\)]\s+'
         parts = re.split(options_pattern, q_block)
-
+        
         question_text = parts[0].strip()
-        options: Dict[str, str] = {}
-
+        options = {}
+        
         for j in range(1, len(parts), 2):
             if j + 1 < len(parts):
-                options[parts[j]] = parts[j + 1].strip().replace('\x00', '')
-
-        if not options:
-            options = {"TEXT": "Write your text response down below."}
-
+                # Apply one last deep-clean to the options text just in case
+                options[parts[j]] = parts[j+1].strip().replace('\x00', '')
+                
+        if i == 0:
+             print(f"[PARSER] Q{q_num} Text extracted: {question_text[:80]}...")
+             print(f"[PARSER] Q{q_num} Options extracted: {list(options.keys())}")
+                
         parsed_questions.append({
             "question_number": q_num,
+            # Apply one last deep-clean to the question text
             "text": question_text.replace('\x00', ''),
-            "options": options,
+            "options": options if options else {"TEXT": "Write your text response down below."}
         })
-
-    return sorted(parsed_questions, key=lambda x: x["question_number"])
-
-
-def parse_question_pdf(file_path: str) -> list:
-    """Extract all questions from PDF using generic text extraction and AI fallback."""
-    print(f"\n[DEBUG] Starting extraction for file: {file_path}")
-
-    try:
-        doc = fitz.open(file_path)
-    except Exception as e:
-        print(f"[ERROR] Unable to open PDF file: {e}")
-        return []
-
-    all_text = ""
-    total_pages = len(doc)
-    print(f"[DEBUG] Total pages to process: {total_pages}")
-
-    for i in range(total_pages):
-        print(f"[DEBUG] Extracting text from page {i+1}/{total_pages}...")
-        page_text = _extract_text_from_page(doc, file_path, i)
-        if page_text:
-            all_text += page_text + "\n"
-        else:
-            print(f"[WARNING] Page {i+1} returned no text or OCR data.")
-
-    doc.close()
-
-    if not all_text.strip():
-        print("[ERROR] No text could be extracted from the PDF. Check if the file is corrupted or if OCR is required.")
-        return []
-
-    extracted_questions = _parse_questions_from_text(all_text)
-    if extracted_questions:
-        print(f"[DEBUG] Parsed {len(extracted_questions)} questions using regex logic.")
-        return extracted_questions
-
-    print("[DEBUG] Regex parsing did not find questions. Falling back to AI-based extraction.")
-    ai_questions = parse_pdf_text_to_json(all_text)
-    if ai_questions:
-        print(f"[DEBUG] AI fallback extracted {len(ai_questions)} questions.")
-        return ai_questions
-
-    print("[ERROR] No questions extracted from PDF after regex parsing and AI fallback.")
-    return []
+        
+    print(f"[PARSER] Successfully compiled {len(parsed_questions)} questions into memory.")
+    return sorted(parsed_questions, key=lambda x: x['question_number'])

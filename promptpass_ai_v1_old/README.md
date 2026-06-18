@@ -1,86 +1,74 @@
-# 📚 Promptpass.ai v0 - Initial Release
+# 📚 Promptpass.ai v1 - Enhanced & Production-Ready
 
-An intelligent AI-powered exam practice platform (Version 0) that helps students prepare for exams by uploading question papers, getting AI-evaluated answers, and receiving detailed explanations with follow-up chat support.
+An intelligent AI-powered exam practice platform (Version 1 - Latest) that helps students prepare for exams by uploading question papers, getting AI-evaluated answers, and receiving detailed explanations with follow-up chat support.
 
-> **Version**: v0 (Original)  
-> **Status**: Stable  
-> **For Latest Features**: See [v1](../promptpass_ai_v1/README.md)
-
----
-
-## ⚠️ Important Notes for v0
-
-- **2-Question Limit**: PDF extraction limited to first 2 questions per upload
-- **Basic Error Handling**: Limited error recovery
-- **All Queries**: Database queries fetch all records (not optimized)
-- **For Learning**: Great reference for understanding the initial architecture
-
-**→ For Production Use**: See [v1 (Latest)](../promptpass_ai_v1/README.md) with full features and optimizations
+> **Version**: v1 (Latest & Recommended)  
+> **Status**: Production-Ready  
+> **Previous Version**: [v0](../promptpass_ai_v0/README.md)
 
 ---
 
-## ✨ v0 Features
+## ✨ v1 Improvements Over v0
 
-- **📄 PDF Question Extraction**: Upload exam PDFs (extracts first 2 questions)
-- **🤖 AI-Powered Evaluation**: Get instant AI-based evaluation with explanations
-- **💬 Follow-up Chat**: Ask follow-up questions for understanding
-- **📊 Progress Tracking**: Visual progress indicators
-- **🗄️ Persistent Storage**: PostgreSQL database
+| Feature | v0 | v1 | Details |
+|---------|----|----|---------|
+| PDF Extraction | 2 questions limit | All questions | Generic processing for any PDF size |
+| Error Handling | Basic | ✅ Comprehensive | Try-catch blocks and graceful fallbacks |
+| DB Queries | All records | ✅ Filtered | Queries only relevant data per exam plan |
+| Logging | Limited | ✅ Detailed | [DEBUG], [ERROR], [WARNING] prefixes |
+| Production Ready | ❌ | ✅ | Full error handling and optimization |
+
+---
+
+## ✨ v1 Features
+
+- **📄 PDF Question Extraction**: Upload exam PDFs and extract **ALL questions** automatically
+- **🤖 AI-Powered Evaluation**: Get instant AI-based evaluation with detailed explanations
+- **💬 Follow-up Chat**: Ask follow-up questions for deeper understanding
+- **📊 Progress Tracking**: Visual progress indicators (gray/green/red status)
+- **🗄️ Persistent Storage**: PostgreSQL database with optimized queries
 - **⚡ Real-time Streaming**: Server-sent events for AI responses
 - **🔄 Multi-exam Support**: Create and manage multiple exam plans
+- **🛡️ Error Handling**: Comprehensive error recovery and logging
 
 ---
 
 ## ⚡ Quick Start (5 minutes)
 
-### Option A: Full Docker Setup (Recommended)
 ```bash
-# 1. Copy environment file
-cp .env.example .env
+# 1. Start the required services for v1
+cd promptpass_ai_v1
+docker compose up -d
 
-# 2. Start all services (PostgreSQL + Ollama)
-docker-compose up -d
-
-# 3. Download Ollama model (first time only, ~4GB)
-docker exec practice_app_ollama ollama pull mistral
-
-# 4. Install frontend and run
-cd frontend
-npm install
-npm run dev
-
-# 5. Open the URL shown in the Vite terminal (usually http://localhost:5173)
-# Backend auto-connects to Ollama at http://ollama:11434
-```
-
-### Option B: Manual Backend Setup (Development)
-```bash
-# 1. Start PostgreSQL and Ollama
-docker-compose up -d
-
-# 2. Install backend dependencies
+# 2. Install and run the backend (in one terminal)
 cd backend
 pip install -r requirements.txt
-
-# 3. Run FastAPI server
+export OLLAMA_HOST=http://localhost:11434
+export OLLAMA_MODEL=phi
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# 4. In another terminal, run frontend
-cd frontend
+# 3. Install and run the frontend (in another terminal)
+cd promptpass_ai_v1/frontend
 npm install
 npm run dev
 
-# 5. Open the URL shown in the Vite terminal (usually http://localhost:5173)
+# 4. Open the URL shown in the Vite terminal (usually http://localhost:5173)
+# 5. Upload a PDF with questions → v1 supports text PDFs, scanned PDFs, and generic question formats
 ```
 
 ### Troubleshooting
-- If your browser shows `GET http://localhost:8000/api/plans net::ERR_CONNECTION_REFUSED`, the backend is not running on port `8000`.
-- Start the backend and verify with:
+- If you see `GET http://localhost:8000/api/plans net::ERR_CONNECTION_REFUSED`, make sure the backend is running on port `8000`.
+- Verify the backend with:
   ```bash
   curl http://localhost:8000/api/plans
   ```
-- If Vite starts on `5174` instead of `5173`, use the actual URL printed in the terminal.
-- If the frontend loads but API fetches fail, the React app is running but the backend needs to be started separately.
+- If the frontend terminal shows a different port than `5173`, use that URL instead.
+- For scanned PDFs, install Tesseract OCR on your machine and run the backend again.
+
+> If port 5173 is already in use, Vite may start on 5174 or a later port. Open the URL shown in the terminal, not a hard-coded 5175.
+
+> Optional: For scanned PDFs, install Tesseract OCR on your machine to enable OCR fallback.
+> On Ubuntu: `sudo apt-get install tesseract-ocr`
 
 ---
 
@@ -90,15 +78,12 @@ npm run dev
 - **Framework**: FastAPI (Python web framework)
 - **Database**: PostgreSQL (relational database)
 - **ORM**: SQLAlchemy (SQL toolkit and ORM)
-- **AI Service**: Ollama (Local open-source LLM)
-- **Default Model**: Mistral 7B (fast, accurate)
+- **AI Service**: Google Generative AI (Gemini 2.0 Flash)
 - **PDF Processing**: PDFPlumber & PyMuPDF (fitz)
 - **Server**: Uvicorn (ASGI server)
-- **HTTP Client**: Requests (for Ollama API)
 
-### Database & Services
+### Database
 - **PostgreSQL 16** (containerized)
-- **Ollama** (containerized - runs LLM models locally)
 - **Adminer** for database administration UI
 
 ### Frontend
@@ -145,44 +130,29 @@ Promptpass.ai/
 - Python 3.8+
 - Node.js 16+ (for frontend)
 - Docker & Docker Compose
+- Google Gemini API Key
 - PostgreSQL (or use Docker)
-- At least 4GB RAM for Ollama
 
 ### 1. Environment Setup
 
-Create a `.env` file in the root directory (copy from `.env.example`):
+Create a `.env` file in the backend directory:
 
 ```bash
-# Ollama Configuration
-OLLAMA_HOST=http://ollama:11434
-OLLAMA_MODEL=mistral
+# Google Gemini API Configuration
+GEMINI_API_KEY=your_gemini_api_key_here
 
 # Database Configuration (optional if using docker-compose)
-POSTGRES_USER=app_user
-POSTGRES_PASSWORD=app_secure_password
-POSTGRES_DB=practice_session_db
+DATABASE_URL=postgresql://app_user:app_secure_password@localhost:5432/practice_session_db
 ```
 
-**Notes:**
-- `OLLAMA_HOST`: URL where Ollama API listens (Docker: `http://ollama:11434`, Local: `http://localhost:11434`)
-- `OLLAMA_MODEL`: Model to use (mistral, llama2, etc.)
-- Models are auto-downloaded on first use (4-7GB each)
-
-### 2. Database & Ollama Setup (Using Docker)
+### 2. Database Setup (Using Docker)
 
 ```bash
-# Start PostgreSQL and Ollama services
+# Start PostgreSQL and Adminer services
 docker-compose up -d
 
 # Verify services are running
 docker-compose ps
-
-# Download default Ollama model (first time only)
-# This downloads ~4GB of data - be patient!
-docker exec practice_app_ollama ollama pull mistral
-
-# Verify Ollama is ready
-curl http://localhost:11434/api/tags
 
 # Access Adminer at http://localhost:8080
 # - System: PostgreSQL
@@ -190,17 +160,7 @@ curl http://localhost:11434/api/tags
 # - Username: app_user
 # - Password: app_secure_password
 # - Database: practice_session_db
-
-# To use a different model:
-docker exec practice_app_ollama ollama pull llama2
-# Then update .env: OLLAMA_MODEL=llama2
 ```
-
-**Available Models** (Popular options):
-- `mistral` (7B) - Fast, accurate - **Recommended**
-- `llama2` (7B) - Good general purpose
-- `neural-chat` (7B) - Optimized for chat
-- `dolphin-mixtral` (8x7B) - High quality, more VRAM needed
 
 ### 3. Backend Setup
 
@@ -315,20 +275,10 @@ React entry point that initializes the application with Vite's client-side hydra
 - question_number: Integer
 - text: String (question text)
 - options: JSON {A: "...", B: "...", C: "...", D: "..."}
-OLLAMA_HOST             # Ollama API URL (Default: http://ollama:11434)
-OLLAMA_MODEL            # Model name (Default: mistral)
-POSTGRES_USER           # Database user (Default: app_user)
-POSTGRES_PASSWORD       # Database password (Default: app_secure_password)
-POSTGRES_DB             # Database name (Default: practice_session_db)
 ```
 
-**Ollama Models Performance:**
-| Model | Size | Speed | Quality | VRAM Needed |
-|-------|------|-------|---------|-------------|
-| mistral | 7B | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | 4GB |
-| llama2 | 7B | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | 4GB |
-| neural-chat | 7B | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | 4GB |
-| phi | 2.7B | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | 2GB |python
+### UserAttempt
+```python
 - id: UUID (Primary Key)
 - question_id: UUID (Foreign Key to Question, unique)
 - selected_answer: String (A/B/C/D)
@@ -450,9 +400,6 @@ See [frontend/package.json](frontend/package.json):
 
 ## 🔮 Future Enhancements
 
-- [ ] Generic PDF extraction (unlimited questions)
-- [ ] Comprehensive error handling
-- [ ] Optimized database queries
 - [ ] User authentication & authorization
 - [ ] Advanced analytics & performance tracking
 - [ ] Multiple user attempts history with detailed statistics
@@ -460,32 +407,14 @@ See [frontend/package.json](frontend/package.json):
 - [ ] Export results as PDF
 - [ ] Timed practice sessions with countdown timer
 - [ ] Leaderboard & competitive features
+- [ ] Mobile app version (React Native)
+- [ ] Real-time collaboration features
+- [ ] AI-powered hint system
+- [ ] Batch PDF uploads with progress tracking
+- [ ] Question difficulty classification
+- [ ] Topic-based question grouping
 
 ---
-
-## ⬆️ Upgrade to v1
-
-**v1 includes all v0 features plus:**
-- ✅ Extracts ALL questions (no 2-question limit)
-- ✅ Comprehensive error handling
-- ✅ Optimized database queries
-- ✅ Better logging and debugging
-- ✅ Production-ready code
-
-See [v1 README](../promptpass_ai_v1/README.md) for details.
-
----
-
-## 🔗 Related
-
-- [Main README](../../README.md) - Project overview
-- [v1 Version](../promptpass_ai_v1/README.md) - Latest version
-- [GitHub Repository](https://github.com/Deepanshu1003/Promptpass.ai)
-
----
-
-**Version**: v0 (Original)  
-**Last Updated**: June 17, 2026
 
 ## 📄 License
 
@@ -538,14 +467,43 @@ Contributions are welcome! Please ensure:
 
 ---
 
+## 🔮 Future Enhancements (v2+)
+
+- [ ] User authentication & authorization
+- [ ] Advanced analytics & performance tracking
+- [ ] Multiple user attempts history with detailed statistics
+- [ ] Custom evaluation criteria per exam
+- [ ] Export results as PDF
+- [ ] Timed practice sessions with countdown timer
+- [ ] Leaderboard & competitive features
+- [ ] Mobile app version (React Native)
+- [ ] Real-time collaboration features
+- [ ] AI-powered hint system
+- [ ] Batch PDF uploads with progress tracking
+- [ ] Question difficulty classification
+- [ ] Topic-based question grouping
+
+---
+
+## 📊 What's New in v1
+
+✅ **Generic PDF Processing** - No more 2-question limit  
+✅ **Comprehensive Error Handling** - Try-catch blocks throughout  
+✅ **DB Query Optimization** - Filters by exam plan instead of fetching all  
+✅ **Better Logging** - [DEBUG], [ERROR], [WARNING] prefixes  
+✅ **Production Ready** - Full error recovery and graceful fallbacks  
+
+See [v0 README](../promptpass_ai_v0/README.md) for previous version.
+
+---
+
+## 🔗 Related
+
+- [Main README](../../README.md) - Project overview
+- [v0 Version](../promptpass_ai_v0/README.md) - Original version
+- [GitHub Repository](https://github.com/Deepanshu1003/Promptpass.ai)
+
+---
+
+**Version**: v1 (Latest & Recommended)  
 **Last Updated**: June 17, 2026
-
-## Usage
-- Access the frontend application in your web browser at `http://localhost:3000`.
-- The backend API can be accessed at `http://localhost:5000`.
-
-## Contributing
-Feel free to submit issues or pull requests for improvements or bug fixes.
-
-## License
-This project is licensed under the MIT License.
