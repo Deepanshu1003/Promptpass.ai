@@ -1,6 +1,10 @@
 import os
 import json
 from openai import OpenAI
+from dotenv import load_dotenv
+
+# load .env file if it exists
+load_dotenv()
 
 # OpenRouter Configuration
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
