@@ -1,58 +1,58 @@
 import os
 import json
-from openai import OpenAI
 from dotenv import load_dotenv
+from openai import OpenAI
 
-# load .env file if it exists
+# --------------------------------------------------
+# Load Environment Variables
+# --------------------------------------------------
+
 load_dotenv()
 
-# OpenRouter Configuration
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 
-MODEL = os.getenv(
-    "OPENROUTER_MODEL",
-    "deepseek/deepseek-r1:free"
+if not GITHUB_TOKEN:
+    raise RuntimeError(
+        "GITHUB_TOKEN is not configured. "
+        "Please set it in your .env file."
+    )
+
+CHAT_MODEL = os.getenv(
+    "CHAT_MODEL",
+    "gpt-4o-mini"
 )
+
+EVALUATION_MODEL = os.getenv(
+    "EVALUATION_MODEL",
+    "gpt-4o-mini"
+)
+
+print(f"[AI] Using chat model: {CHAT_MODEL}")
+print(f"[AI] Using evaluation model: {EVALUATION_MODEL}")
+
+# --------------------------------------------------
+# GitHub Models Client
+# --------------------------------------------------
 
 client = OpenAI(
-    api_key=OPENROUTER_API_KEY,
-    base_url="https://openrouter.ai/api/v1"
+    api_key=GITHUB_TOKEN,
+    base_url="https://models.inference.ai.azure.com"
 )
 
+# --------------------------------------------------
+# Generic Streaming Function
+# --------------------------------------------------
 
-def generate_response(prompt: str) -> str:
-    """
-    Synchronous OpenRouter call
-    """
-
+async def generate_stream(
+    prompt: str,
+    model_name: str
+):
     try:
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.2
-        )
 
-        return response.choices[0].message.content
-
-    except Exception as e:
-        print(f"[ERROR] OpenRouter sync failed: {str(e)}")
-        raise
-
-
-async def generate_stream(prompt: str):
-    """
-    Streaming OpenRouter call
-    """
-
-    try:
+        print(f"[AI] Using model: {model_name}")
 
         stream = client.chat.completions.create(
-            model=MODEL,
+            model=model_name,
             messages=[
                 {
                     "role": "user",
@@ -67,26 +67,32 @@ async def generate_stream(prompt: str):
 
             if (
                 chunk.choices
+                and chunk.choices[0].delta
                 and chunk.choices[0].delta.content
             ):
                 yield chunk.choices[0].delta.content
 
     except Exception as e:
 
-        print(f"[ERROR] OpenRouter stream failed: {str(e)}")
-        yield f"\n\n[AI Error: {str(e)}]"
+        print(
+            f"[ERROR] GitHub Models stream failed "
+            f"(model={model_name}) : {str(e)}"
+        )
 
+        yield (
+            f"\n\n"
+            f"[AI Error: {str(e)}]"
+        )
 
-# ---------------------------------------------------
-# Evaluation
-# ---------------------------------------------------
+# --------------------------------------------------
+# Answer Evaluation
+# --------------------------------------------------
 
 async def stream_evaluation(
     question_text: str,
     options: dict,
     selected_answer: str
 ):
-
     prompt = f"""
 You are an expert competitive-exam evaluator.
 
@@ -96,44 +102,45 @@ Question:
 Options:
 {json.dumps(options, indent=2)}
 
-Student Selected:
+Student Selected Answer:
 {selected_answer}
 
-Tasks:
+Instructions:
 
 1. Determine whether the answer is correct.
-2. Start with EXACTLY one of:
+2. Start your response EXACTLY with:
 
 GRADE: CORRECT
 
-or
+OR
 
 GRADE: INCORRECT
 
 3. Explain the reasoning.
-4. Explain why other options are wrong.
+4. Explain why other options are incorrect.
 5. Mention the key concept tested.
-6. Give one exam tip.
+6. Give one exam-preparation tip.
 
 Use Markdown formatting.
 """
 
-    async for chunk in generate_stream(prompt):
+    async for chunk in generate_stream(
+        prompt,
+        EVALUATION_MODEL
+    ):
         yield chunk
 
-
-# ---------------------------------------------------
-# Chat
-# ---------------------------------------------------
+# --------------------------------------------------
+# Follow-up Tutor Chat
+# --------------------------------------------------
 
 async def stream_chat(
     question_text: str,
     explanation: str,
     user_message: str
 ):
-
     prompt = f"""
-You are an AI tutor.
+You are an expert AI tutor helping a student.
 
 Question:
 {question_text}
@@ -141,16 +148,20 @@ Question:
 Previous Explanation:
 {explanation}
 
-Student Follow-Up Question:
+Student Follow-up Question:
 {user_message}
 
 Instructions:
 
-- Be educational.
-- Use markdown.
-- Keep responses concise.
-- Give examples if useful.
+- Answer clearly.
+- Be concise.
+- Use Markdown.
+- Give examples when helpful.
+- Focus on helping the student understand the concept.
 """
 
-    async for chunk in generate_stream(prompt):
+    async for chunk in generate_stream(
+        prompt,
+        CHAT_MODEL
+    ):
         yield chunk

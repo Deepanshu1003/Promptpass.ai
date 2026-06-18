@@ -103,7 +103,8 @@ async def evaluate_answer(payload: AttemptSubmit, db: Session = Depends(get_db))
             yield f"data: {json.dumps({'text': text_chunk})}\n\n"
             
         full_text = "".join(collected_chunks)
-        is_correct = "GRADE: CORRECT" in full_text
+        first_line = full_text.strip().split("\n")[0]
+        is_correct = "CORRECT" in first_line.upper()
         sync_db = next(get_db())
         try:
             print(f"[DEBUG] Saving UserAttempt: question_id={q_id}, is_correct={is_correct}")

@@ -19,11 +19,17 @@ export default function PracticeSession({ planId, plans, onSwitch, onBack }) {
   const [questions, setQuestions] = useState([]);
   const [progress, setProgress] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+
   const [selectedAnswer, setSelectedAnswer] = useState('');
   const [explanation, setExplanation] = useState('');
+  const [chatLog, setChatLog] = useState([]);
+
+  const [questionAnswers, setQuestionAnswers] = useState({});
+  const [questionExplanations, setQuestionExplanations] = useState({});
+  const [questionChats, setQuestionChats] = useState({});
+  
   const [isStreaming, setIsStreaming] = useState(false);
   const [chatInput, setChatInput] = useState('');
-  const [chatLog, setChatLog] = useState([]);
   const [isChatting, setIsChatting] = useState(false);
 
   useEffect(() => {
