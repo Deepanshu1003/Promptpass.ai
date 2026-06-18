@@ -44,7 +44,7 @@ docker compose up -d
 cd backend
 pip install -r requirements.txt
 export OLLAMA_HOST=http://localhost:11434
-export OLLAMA_MODEL=mistral
+export OLLAMA_MODEL=phi
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # 3. Install and run the frontend (in another terminal)
